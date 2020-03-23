@@ -1,0 +1,11 @@
+{
+  "manifest_version": 2,
+  "version": "1.0",
+  "short_name": "Elm App",
+  "name": "Create Elm App Sample",
+  "description": "Create Elm App Sample",
+  "start_url": "./index.html",
+  "browser_action": {
+    "default_popup": "index.html"
+  }
+}

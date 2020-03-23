@@ -1,0 +1,12 @@
+{
+    "vocabularies": [
+        {
+            "word": "Hellooo",
+            "id": 1
+        },
+        {
+            "word": "Worlddd",
+            "id": 2
+        }
+    ]
+}
