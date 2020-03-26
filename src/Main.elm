@@ -2,13 +2,14 @@ module Main exposing (..)
 
 import Browser exposing (UrlRequest(..))
 import Browser.Navigation as Nav
-import Html exposing (Html, button, div, form, h1, input, span, text)
-import Html.Attributes exposing (action, method, placeholder, type_, value)
-import Html.Events exposing (onInput)
+import Html exposing (Html, a, button, div, form, h1, input, span, text)
+import Html.Attributes exposing (href, placeholder, type_, value)
+import Html.Events exposing (onInput, onSubmit)
 import Http exposing (get)
-import Json.Decode as Decode exposing (Decoder, int, string)
+import Json.Decode as Decode exposing (Decoder, bool, int, string)
 import Json.Decode.Pipeline exposing (required)
 import Url exposing (Url)
+import Url.Builder
 import Url.Parser as Url exposing ((</>), Parser)
 
 
@@ -16,25 +17,29 @@ import Url.Parser as Url exposing ((</>), Parser)
 ---- MODEL ----
 
 
+backendUrl : String
+backendUrl =
+    "http://localhost:3000"
+
+
 type alias Word =
-    String
-
-
-type alias FormField =
-    Word
-
-
-type alias WordFromApi =
     { word : String
     , id : Int
+    }
+
+
+type alias Validation =
+    { text : String
+    , correct : Bool
     }
 
 
 type alias Model =
     { navKey : Nav.Key
     , page : Page
-    , fetchedWord : Maybe WordFromApi
-    , translation : Word
+    , fetchedWord : Maybe Word
+    , validation : Maybe Validation
+    , translation : String
     }
 
 
@@ -43,6 +48,7 @@ init _ url key =
     ( { navKey = key
       , page = urlToPage url
       , fetchedWord = Nothing
+      , validation = Nothing
       , translation = ""
       }
     , onLoadOrUpdate url
@@ -56,11 +62,11 @@ onLoadOrUpdate url =
             urlToPage url
     in
     case page of
-        NotFoundPage ->
-            Cmd.none
-
         WordPage id ->
-            fetchWord id
+            getWord id
+
+        _ ->
+            Cmd.none
 
 
 
@@ -71,7 +77,8 @@ type Msg
     = NoOp
     | SubmitForm
     | SetTranslation String
-    | FetchWord (Result Http.Error WordFromApi)
+    | GetWord (Result Http.Error Word)
+    | GetValidation (Result Http.Error Validation)
     | LinkClicked UrlRequest
     | UrlChange Url.Url
 
@@ -86,14 +93,20 @@ update msg model =
             ( { model | translation = translation }, Cmd.none )
 
         SubmitForm ->
-            ( model, Cmd.none )
+            ( model, validateWord model.translation model.fetchedWord )
 
         --- Fetching ---
-        FetchWord (Ok word) ->
+        GetWord (Ok word) ->
             ( { model | fetchedWord = Just word }, Cmd.none )
 
-        FetchWord (Err _) ->
-            ( model, Cmd.none )
+        GetWord (Err _) ->
+            ( { model | fetchedWord = Nothing }, Cmd.none )
+
+        GetValidation (Ok validation) ->
+            ( { model | validation = Just validation }, Nav.pushUrl model.navKey "/result" )
+
+        GetValidation (Err _) ->
+            ( { model | validation = Nothing }, Cmd.none )
 
         --- Routing ---
         LinkClicked urlRequest ->
@@ -123,49 +136,74 @@ view model =
     { title = "Translation"
     , body =
         [ h1 [] [ text "Translate the following word" ]
+        , div []
+            [ span [] [ text "Enlgish" ]
+            , span [] [ text "=>" ]
+            , span [] [ text "Spanish" ]
+            ]
         , case model.page of
             NotFoundPage ->
                 text "Not Found"
 
             WordPage _ ->
                 formView model
+
+            ResultPage ->
+                resultView model
         ]
     }
 
 
 formView : Model -> Html Msg
 formView model =
-    let
-        vocabulary =
-            case model.fetchedWord of
-                Just wordFromApi ->
-                    wordFromApi.word
-
-                Nothing ->
-                    "Fetching went wrong"
-    in
-    div []
-        [ form [ action "https://httpbin.org/post", method "post" ]
-            [ div []
-                [ span [] [ text "Enlgish" ]
-                , span [] [ text "=>" ]
-                , span [] [ text "Spanish" ]
-                ]
-            , div []
-                [ span [] [ text vocabulary ]
-                ]
-            , div []
-                [ input
-                    [ type_ "text"
-                    , placeholder "Enter your translation here"
-                    , value model.translation
-                    , onInput SetTranslation
+    case model.fetchedWord of
+        Just fetchedWord ->
+            div []
+                [ form [ onSubmit SubmitForm ]
+                    [ div []
+                        [ span [] [ text fetchedWord.word ]
+                        ]
+                    , div []
+                        [ input
+                            [ type_ "text"
+                            , placeholder "Enter your translation here"
+                            , value model.translation
+                            , onInput SetTranslation
+                            ]
+                            []
+                        ]
+                    , button [ type_ "submit" ] [ text "Is it correct?" ]
                     ]
-                    []
                 ]
-            , button [ type_ "submit" ] [ text "Is it correct?" ]
-            ]
-        ]
+
+        Nothing ->
+            div [] [ text "Fetchinf of the word went wrong" ]
+
+
+resultView : Model -> Html Msg
+resultView model =
+    case ( model.validation, model.fetchedWord ) of
+        ( Just validation, Just fetchedWord ) ->
+            div []
+                [ div []
+                    [ span [] [ text fetchedWord.word ]
+                    , span [] [ text " == " ]
+                    , span [] [ text model.translation ]
+                    ]
+                , if validation.correct == True then
+                    div [] [ text "your translation was correct" ]
+
+                  else
+                    div []
+                        [ div [] [ text "your translation was wrong" ]
+                        , div [] [ text (validation.text ++ " would have been correct") ]
+                        ]
+                , a [ href "/word/1" ] [ text "Previous" ]
+                , a [ href "/word/2" ] [ text "Next" ]
+                ]
+
+        ( _, _ ) ->
+            div [] [ text "Fetching went wrong" ]
 
 
 
@@ -191,31 +229,24 @@ main =
 type Page
     = NotFoundPage
     | WordPage Int
+    | ResultPage
 
 
 urlToPage : Url -> Page
 urlToPage url =
-    -- We start with our URL
     url
-        -- Send it through our URL parser (located below)
         |> Url.parse urlParser
-        -- And if it didn't match any known pages, return Index
         |> Maybe.withDefault NotFoundPage
-
-
-
--- The type signature here is a bit gnarly, but you can read it as "a parser for a Page"
 
 
 urlParser : Parser (Page -> a) a
 urlParser =
-    -- We try to match one of the following URLs
     Url.oneOf
-        -- Url.top matches root (i.e. there is nothing after 'https://example.com')
         [ Url.map NotFoundPage Url.top
 
         -- Again, Url.s matches a string. </> matches a separator ('/') in the URL, and Url.int matches any integer and "returns" it, so that the user page value gets the user ID
         , Url.map WordPage (Url.s "word" </> Url.int)
+        , Url.map ResultPage (Url.s "result")
         ]
 
 
@@ -223,20 +254,61 @@ urlParser =
 ---- DATA FETCHING ----
 
 
-fetchWord : Int -> Cmd Msg
-fetchWord id =
+getWord : Int -> Cmd Msg
+getWord id =
+    let
+        url =
+            Url.Builder.crossOrigin backendUrl
+                [ "vocabularies"
+                , String.fromInt id
+                ]
+                [ Url.Builder.string "lang" "en" ]
+
+        -- /vocabularies?lang="en" or /vocabularies/{id}?lang="en"
+    in
     Http.get
-        { url = "http://localhost:3000/vocabularies/" ++ String.fromInt id
-        , expect = Http.expectJson FetchWord decodeWord
+        { url = url
+        , expect = Http.expectJson GetWord decodeWord
         }
+
+
+validateWord : String -> Maybe Word -> Cmd Msg
+validateWord input word =
+    case word of
+        Just value ->
+            let
+                url =
+                    Url.Builder.crossOrigin backendUrl
+                        [ "validate" ]
+                        [ Url.Builder.string "lang" "es"
+                        , Url.Builder.string "input" input
+                        , Url.Builder.string "word-id" (String.fromInt value.id)
+                        ]
+
+                -- /vocabularies?lang="en" or /vocabularies/{id}?lang="en"
+            in
+            Http.get
+                { url = url
+                , expect = Http.expectJson GetValidation decodeValidation
+                }
+
+        Nothing ->
+            Cmd.none
 
 
 
 ---- DECODER ----
 
 
-decodeWord : Decoder WordFromApi
+decodeWord : Decoder Word
 decodeWord =
-    Decode.succeed WordFromApi
+    Decode.succeed Word
         |> required "word" string
         |> required "id" int
+
+
+decodeValidation : Decoder Validation
+decodeValidation =
+    Decode.succeed Validation
+        |> required "text" string
+        |> required "correct" bool

@@ -2,11 +2,25 @@
     "vocabularies": [
         {
             "word": "Hellooo",
+            "lang": "en",
+            "groupId": 1,
             "id": 1
         },
         {
             "word": "Worlddd",
+            "lang": "en",
+            "groupId": 2,
             "id": 2
+        },
+        {
+            "word": "Hola",
+            "lang": "es",
+            "groupId": 1,
+            "id": 3
         }
-    ]
+    ],
+    "validate": {
+        "text": "Hola",
+        "correct": true
+    }
 }
