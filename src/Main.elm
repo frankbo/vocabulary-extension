@@ -19,7 +19,8 @@ import Url.Parser as Url exposing ((</>), Parser)
 
 backendUrl : String
 backendUrl =
-    "http://localhost:3000"
+    -- "http://localhost:3000" -- For testing with json-server
+    "http://localhost:8080"
 
 
 type alias Word =
@@ -177,7 +178,7 @@ formView model =
                 ]
 
         Nothing ->
-            div [] [ text "Fetchinf of the word went wrong" ]
+            div [] [ text "Fetching of the word went wrong" ]
 
 
 resultView : Model -> Html Msg
@@ -259,12 +260,12 @@ getWord id =
     let
         url =
             Url.Builder.crossOrigin backendUrl
-                [ "vocabularies"
-                , String.fromInt id
+                [ "vocabularies" ]
+                [ Url.Builder.string "id" (String.fromInt id)
+                , Url.Builder.string "lang" "es"
                 ]
-                [ Url.Builder.string "lang" "en" ]
 
-        -- /vocabularies?lang="en" or /vocabularies/{id}?lang="en"
+        -- /vocabularies?lang="en"&id=1 or /vocabularies?lang="en"
     in
     Http.get
         { url = url
@@ -279,7 +280,7 @@ validateWord input word =
             let
                 url =
                     Url.Builder.crossOrigin backendUrl
-                        [ "validate" ]
+                        [ "validation" ]
                         [ Url.Builder.string "lang" "es"
                         , Url.Builder.string "input" input
                         , Url.Builder.string "word-id" (String.fromInt value.id)

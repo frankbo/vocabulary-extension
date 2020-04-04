@@ -19,7 +19,7 @@
             "id": 3
         }
     ],
-    "validate": {
+    "validation": {
         "text": "Hola",
         "correct": true
     }
