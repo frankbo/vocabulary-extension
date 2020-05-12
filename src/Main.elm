@@ -6,8 +6,8 @@ import Bootstrap.Form as Form
 import Bootstrap.Form.Input as Input
 import Browser exposing (UrlRequest(..))
 import Browser.Navigation as Nav
-import Html exposing (Html, a, div, form, h1, input, span, text)
-import Html.Attributes exposing (class, href, placeholder, type_, value)
+import Html exposing (Html, div, form, h1, span, text)
+import Html.Attributes exposing (class, href, placeholder, value)
 import Html.Events exposing (onInput, onSubmit)
 import Http exposing (get)
 import Json.Decode as Decode exposing (Decoder, bool, int, string)
