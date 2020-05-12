@@ -1,9 +1,13 @@
 module Main exposing (..)
 
+import Bootstrap.Button as Button
+import Bootstrap.CDN as CDN
+import Bootstrap.Form as Form
+import Bootstrap.Form.Input as Input
 import Browser exposing (UrlRequest(..))
 import Browser.Navigation as Nav
-import Html exposing (Html, a, button, div, form, h1, input, span, text)
-import Html.Attributes exposing (href, placeholder, type_, value)
+import Html exposing (Html, a, div, form, h1, input, span, text)
+import Html.Attributes exposing (class, href, placeholder, type_, value)
 import Html.Events exposing (onInput, onSubmit)
 import Http exposing (get)
 import Json.Decode as Decode exposing (Decoder, bool, int, string)
@@ -134,12 +138,17 @@ update msg model =
 
 view : Model -> Browser.Document Msg
 view model =
+    let
+        arrow =
+            String.fromChar (Char.fromCode 8594)
+    in
     { title = "Translation"
     , body =
-        [ h1 [] [ text "Translate the following word" ]
-        , div []
+        [ CDN.stylesheet
+        , h1 [ class "center-text " ] [ text "Translate the following word" ]
+        , div [ class "flex" ]
             [ span [] [ text "Enlgish" ]
-            , span [] [ text "=>" ]
+            , span [] [ text arrow ]
             , span [] [ text "Spanish" ]
             ]
         , case model.page of
@@ -159,26 +168,24 @@ formView : Model -> Html Msg
 formView model =
     case model.fetchedWord of
         Just fetchedWord ->
-            div []
-                [ form [ onSubmit SubmitForm ]
+            div [ class "flex" ]
+                [ Form.form [ onSubmit SubmitForm ]
                     [ div []
                         [ span [] [ text fetchedWord.word ]
                         ]
                     , div []
-                        [ input
-                            [ type_ "text"
-                            , placeholder "Enter your translation here"
-                            , value model.translation
-                            , onInput SetTranslation
+                        [ Input.text
+                            [ Input.placeholder "Enter your translation here"
+                            , Input.value model.translation
+                            , Input.onInput SetTranslation
                             ]
-                            []
                         ]
-                    , button [ type_ "submit" ] [ text "Is it correct?" ]
+                    , Button.submitButton [ Button.primary ] [ text "Is it correct?" ]
                     ]
                 ]
 
         Nothing ->
-            div [] [ text "Fetching of the word went wrong" ]
+            div [ class "center-text" ] [ text "Fetching of the word went wrong" ]
 
 
 resultView : Model -> Html Msg
@@ -186,25 +193,27 @@ resultView model =
     case ( model.validation, model.fetchedWord ) of
         ( Just validation, Just fetchedWord ) ->
             div []
-                [ div []
+                [ div [ class "flex" ]
                     [ span [] [ text fetchedWord.word ]
                     , span [] [ text " == " ]
                     , span [] [ text model.translation ]
                     ]
                 , if validation.correct == True then
-                    div [] [ text "your translation was correct" ]
+                    div [ class "flex" ] [ text "your translation was correct" ]
 
                   else
-                    div []
-                        [ div [] [ text "your translation was wrong" ]
-                        , div [] [ text (validation.text ++ " would have been correct") ]
+                    div [ class "flex" ]
+                        [ div [ class "center-text" ] [ text "your translation was wrong" ]
+                        , div [ class "center-text" ] [ text (validation.text ++ " would have been correct") ]
                         ]
-                , a [ href "/word/1" ] [ text "Previous" ]
-                , a [ href "/word/2" ] [ text "Next" ]
+                , div [ class "between" ]
+                    [ Button.linkButton [ Button.secondary, Button.attrs [ href "/word/1" ] ] [ text "Previous" ]
+                    , Button.linkButton [ Button.secondary, Button.attrs [ href "/word/2" ] ] [ text "Next" ]
+                    ]
                 ]
 
         ( _, _ ) ->
-            div [] [ text "Fetching went wrong" ]
+            div [ class "center-text" ] [ text "Fetching went wrong" ]
 
 
 
@@ -262,7 +271,7 @@ getWord id =
             Url.Builder.crossOrigin backendUrl
                 [ "vocabularies" ]
                 [ Url.Builder.string "id" (String.fromInt id)
-                , Url.Builder.string "lang" "es"
+                , Url.Builder.string "lang" "en"
                 ]
 
         -- /vocabularies?lang="en"&id=1 or /vocabularies?lang="en"
@@ -285,8 +294,6 @@ validateWord input word =
                         , Url.Builder.string "input" input
                         , Url.Builder.string "word-id" (String.fromInt value.id)
                         ]
-
-                -- /vocabularies?lang="en" or /vocabularies/{id}?lang="en"
             in
             Http.get
                 { url = url
