@@ -39,3 +39,7 @@ span {
 .center-text {
   text-align: center;
 }
+
+.column {
+  flex-direction: column;
+}

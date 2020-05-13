@@ -27,6 +27,11 @@ backendUrl =
     "http://localhost:8080"
 
 
+arrow : String
+arrow =
+    String.fromChar (Char.fromCode 8594)
+
+
 type alias Word =
     { word : String
     , id : Int
@@ -138,10 +143,6 @@ update msg model =
 
 view : Model -> Browser.Document Msg
 view model =
-    let
-        arrow =
-            String.fromChar (Char.fromCode 8594)
-    in
     { title = "Translation"
     , body =
         [ CDN.stylesheet
@@ -195,20 +196,20 @@ resultView model =
             div []
                 [ div [ class "flex" ]
                     [ span [] [ text fetchedWord.word ]
-                    , span [] [ text " == " ]
+                    , span [] [ text arrow ]
                     , span [] [ text model.translation ]
                     ]
                 , if validation.correct == True then
                     div [ class "flex" ] [ text "your translation was correct" ]
 
                   else
-                    div [ class "flex" ]
+                    div [ class "flex column" ]
                         [ div [ class "center-text" ] [ text "your translation was wrong" ]
                         , div [ class "center-text" ] [ text (validation.text ++ " would have been correct") ]
                         ]
                 , div [ class "between" ]
-                    [ Button.linkButton [ Button.secondary, Button.attrs [ href "/word/1" ] ] [ text "Previous" ]
-                    , Button.linkButton [ Button.secondary, Button.attrs [ href "/word/2" ] ] [ text "Next" ]
+                    [ Button.linkButton [ Button.secondary, Button.attrs [ href ("/word/" ++ String.fromInt fetchedWord.id) ] ] [ text "Previous" ]
+                    , Button.linkButton [ Button.secondary, Button.attrs [ href ("/word/" ++ String.fromInt (fetchedWord.id + 1)) ] ] [ text "Next" ]
                     ]
                 ]
 
